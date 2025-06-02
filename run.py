@@ -1,5 +1,4 @@
 ﻿import requests
-from collections import Counter
 import os
 import csv
 
@@ -8,20 +7,16 @@ def load_dotenv_file(env_path):
     try:
         with open(env_path, 'r', encoding='utf-8') as f:
             for line in f:
-                # Remove BOM if present
-                line = line.lstrip('\ufeff')
-                line = line.strip()
+                line = line.lstrip('\ufeff').strip()
                 if not line or line.startswith('#'):
                     continue
                 if '=' in line:
                     key, value = line.split('=', 1)
-                    key = key.strip()
-                    value = value.strip().strip('"').strip("'")
-                    os.environ[key] = value
+                    os.environ[key.strip()] = value.strip().strip('"').strip("'")
     except FileNotFoundError:
         print(f".env file not found at: {env_path}")
 
-# Load environment variables from .env file manually
+# Load environment variables
 dotenv_path = "./.env"
 load_dotenv_file(dotenv_path)
 
@@ -42,7 +37,9 @@ if repos_response.status_code != 200:
 else:
     repos = repos_response.json()
 
-commit_messages = []
+# Prepare rows: list of [repo_name, message, sha, date]
+rows = []
+
 for repo in repos:
     repo_name = repo["name"]
     commits_url = (
@@ -57,22 +54,18 @@ for repo in repos:
     commits = commits_response.json()
     for commit in commits:
         try:
-            msg = commit["commit"]["message"]
-            commit_messages.append(msg.strip())
+            message = commit["commit"]["message"].strip()
+            sha = commit["sha"]
+            date = commit["commit"]["author"]["date"]
+            rows.append([repo_name, message, sha, date])
         except KeyError:
             continue
 
-# Count how many times each commit message appears
-counter = Counter(commit_messages)
-
-# Write to CSV: one row per unique message, with its count
-csv_path = "commit_messages.csv"
+# Write to CSV
+csv_path = "commit_details.csv"
 with open(csv_path, mode="w", newline="", encoding="utf-8") as csvfile:
     writer = csv.writer(csvfile)
-    # Header
-    writer.writerow(["message", "count"])
-    # Each unique message + its count
-    for message, count in counter.most_common():
-        writer.writerow([message, count])
+    writer.writerow(["repository", "message", "commit_hash", "date"])
+    writer.writerows(rows)
 
-print(f"\nExported {len(counter)} unique commit messages to '{csv_path}'")
+print(f"\nExported {len(rows)} commits to '{csv_path}'")

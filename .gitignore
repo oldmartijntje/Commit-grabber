@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 .idea/
 commit_messages.csv
+commit_details.csv
 # C extensions
 *.so
 
